@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Chain Reaction Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            max-width: 500px;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        #header {
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .stat {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            color: #FFD700;
+        }
+
+        #levelProgress {
+            position: absolute;
+            top: 70px;
+            left: 15px;
+            right: 15px;
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #progressBar {
+            height: 100%;
+            background: linear-gradient(90deg, #00f260, #0575e6);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0,242,96,0.5);
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: calc(100vh - 250px);
+            background: transparent;
+        }
+
+        #footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-top: 2px solid rgba(255,255,255,0.1);
+        }
+
+        #powerUps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .powerup-btn {
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+        }
+
+        .powerup-btn:active {
+            transform: scale(0.95);
+        }
+
+        .powerup-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .powerup-btn.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse-glow 1s infinite;
+            border-color: #FFD700;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.6); }
+            50% { box-shadow: 0 0 30px rgba(255,215,0,1); }
+        }
+
+        .powerup-icon {
+            font-size: 24px;
+        }
+
+        .powerup-count {
+            font-size: 14px;
+            color: #FFD700;
+        }
+
+        .powerup-cooldown {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,0,0,0.6);
+            transform-origin: left;
+        }
+
+        #startScreen, #gameOverScreen, #levelUpScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102,126,234,0.95) 0%, rgba(118,75,162,0.95) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        #gameOverScreen, #levelUpScreen {
+            display: none;
+        }
+
+        #levelUpScreen {
+            background: linear-gradient(135deg, rgba(0,242,96,0.95) 0%, rgba(5,117,230,0.95) 100%);
+        }
+
+        h1 {
+            font-size: 38px;
+            color: white;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            animation: title-glow 2s infinite;
+        }
+
+        @keyframes title-glow {
+            0%, 100% { text-shadow: 3px 3px 6px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.3); }
+            50% { text-shadow: 3px 3px 6px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.6); }
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: rgba(255,255,255,0.95);
+            margin-bottom: 20px;
+            max-width: 350px;
+            line-height: 1.5;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-box-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 5px;
+        }
+
+        .stat-box-value {
+            font-size: 24px;
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .instructions {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 350px;
+        }
+
+        .instructions h3 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .instructions p {
+            color: white;
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
+            margin: 5px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #comboDisplay {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 0 0 30px rgba(255,215,0,1), 0 0 60px rgba(255,215,0,0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 50;
+        }
+
+        #notification {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            padding: 12px 25px;
+            border-radius: 25px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 60;
+            border: 2px solid rgba(255,215,0,0.5);
+        }
+
+        .achievement-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            padding: 25px;
+            border-radius: 20px;
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 70;
+            text-align: center;
+            animation: achievement-show 3s forwards;
+        }
+
+        @keyframes achievement-show {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            10% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            20% { transform: translate(-50%, -50%) scale(1); }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        }
+
+        .achievement-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        #upgradePanel {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            max-width: 350px;
+        }
+
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+
+        .upgrade-btn {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .upgrade-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .highscore {
+            font-size: 16px;
+            color: #FFD700;
+            margin-top: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #streakDisplay {
+            position: absolute;
+            top: 90px;
+            right: 15px;
+            background: rgba(255,0,0,0.8);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            display: none;
+            animation: streak-pulse 0.5s infinite;
+        }
+
+        @keyframes streak-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .special-orb-indicator {
+            position: absolute;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(138,43,226,0.9);
+            padding: 10px 20px;
+            border-radius: 15px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen">
+            <h1>⚡ Color Chain Reaction Pro</h1>
+            <p class="subtitle">Advanced chain reaction puzzle with special orbs, achievements, and upgrades!</p>
+            
+            <div class="instructions">
+                <h3>🎮 How to Play:</h3>
+                <p>🎯 Tap orbs to explode them and trigger chains</p>
+                <p>⭐ Special orbs have unique powers</p>
+                <p>🔥 Build combos for massive score multipliers</p>
+                <p>🏆 Complete levels to unlock upgrades</p>
+                <p>💎 Collect gems to boost your powers</p>
+            </div>
+
+            <div class="instructions">
+                <h3>✨ Special Orbs:</h3>
+                <p>💎 Diamond - Explodes all nearby orbs</p>
+                <p>⚡ Lightning - Chain reaction amplifier (3x)</p>
+                <p>🌟 Star - Grants bonus time</p>
+                <p>🎯 Target - Triple points</p>
+            </div>
+            
+            <button class="btn" id="startBtn">START GAME</button>
+            <p class="highscore" id="highscoreDisplay">Best Score: 0 | Level: 1</p>
+        </div>
+
+        <div id="levelUpScreen">
+            <h1>🎉 Level Complete!</h1>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-box-label">Score</div>
+                    <div class="stat-box-value" id="levelScore">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Best Combo</div>
+                    <div class="stat-box-value" id="levelCombo">0x</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Gems Earned</div>
+                    <div class="stat-box-value" id="gemsEarned">0💎</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Next Level</div>
+                    <div class="stat-box-value" id="nextLevel">2</div>
+                </div>
+            </div>
+            
+            <div id="upgradePanel">
+                <h3 style="color: white; margin-bottom: 10px;">💎 Upgrades Available</h3>
+                <div class="upgrade-item">
+                    <span style="color: white;">Extra Time +5s</span>
+                    <button class="upgrade-btn" id="upgradeTime">50 💎</button>
+                </div>
+                <div class="upgrade-item">
+                    <span style="color: white;">Power-up +1</span>
+                    <button class="upgrade-btn" id="upgradePowerup">30 💎</button>
+                </div>
+                <div class="upgrade-item">
+                    <span style="color: white;">Score Multiplier</span>
+                    <button class="upgrade-btn" id="upgradeMultiplier">100 💎</button>
+                </div>
+            </div>
+
+            <button class="btn" id="continueBtn">CONTINUE</button>
+        </div>
+
+        <div id="gameOverScreen">
+            <h1>🎮 Game Over!</h1>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-box-label">Final Score</div>
+                    <div class="stat-box-value" id="finalScore">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Level Reached</div>
+                    <div class="stat-box-value" id="levelReached">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Best Combo</div>
+                    <div class="stat-box-value" id="finalCombo">0x</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-label">Total Gems</div>
+                    <div class="stat-box-value" id="totalGems">0💎</div>
+                </div>
+            </div>
+            <p class="highscore" id="newHighscore" style="display:none; font-size: 20px; margin: 15px 0;">🏆 NEW HIGH SCORE! 🏆</p>
+            <button class="btn" id="restartBtn">PLAY AGAIN</button>
+            <button class="btn btn-secondary" id="mainMenuBtn">MAIN MENU</button>
+        </div>
+
+        <div id="header">
+            <div class="stat">
+                <span class="stat-label">Score</span>
+                <span class="stat-value" id="score">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Combo</span>
+                <span class="stat-value" id="combo">0x</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="level">1</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Gems</span>
+                <span class="stat-value" id="gems">0💎</span>
+            </div>
+        </div>
+
+        <div id="levelProgress">
+            <div id="progressBar"></div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+
+        <div id="footer">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 0 5px;">
+                <span style="color: white; font-size: 12px; font-weight: bold;">⏰ <span id="timer">60</span>s</span>
+                <span style="color: #FFD700; font-size: 12px; font-weight: bold;">Multiplier: <span id="multiplier">1.0</span>x</span>
+            </div>
+            <div id="powerUps">
+                <button class="powerup-btn" id="rainbowBtn" title="Rainbow: Clear all of one color">
+                    <span class="powerup-icon">🌈</span>
+                    <span class="powerup-count" id="rainbowCount">3</span>
+                </button>
+                <button class="powerup-btn" id="bombBtn" title="Bomb: Area explosion">
+                    <span class="powerup-icon">💣</span>
+                    <span class="powerup-count" id="bombCount">2</span>
+                </button>
+                <button class="powerup-btn" id="freezeBtn" title="Freeze: Add 10 seconds">
+                    <span class="powerup-icon">❄️</span>
+                    <span class="powerup-count" id="freezeCount">2</span>
+                </button>
+                <button class="powerup-btn" id="magnetBtn" title="Magnet: Pull orbs together">
+                    <span class="powerup-icon">🧲</span>
+                    <span class="powerup-count" id="magnetCount">2</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="comboDisplay"></div>
+        <div id="notification"></div>
+        <div id="streakDisplay">🔥 Streak: <span id="streakCount">0</span></div>
+        <div class="special-orb-indicator" id="specialOrbHint"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Audio context for sound effects
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        // Resize canvas
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight - 250;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let timeLeft = 45; // Reduced from 60 - more challenging!
+        let currentLevel = 1;
+        let gems = 0;
+        let totalGems = parseInt(localStorage.getItem('totalGems')) || 0;
+        let orbs = [];
+        let particles = [];
+        let activePowerup = null;
+        let highScore = parseInt(localStorage.getItem('chainReactionProHighScore')) || 0;
+        let maxLevel = parseInt(localStorage.getItem('maxLevel')) || 1;
+        let scoreMultiplier = parseFloat(localStorage.getItem('scoreMultiplier')) || 1.0;
+        let streak = 0;
+        let lastExplosionTime = 0;
+        let targetScore = 1500; // Increased from 1000 - more challenging!
+        let orbSpawnRate = 0.025; // Faster spawning
+
+        // Upgrades
+        let upgrades = {
+            extraTime: parseInt(localStorage.getItem('extraTime')) || 0,
+            powerupBonus: parseInt(localStorage.getItem('powerupBonus')) || 0,
+            scoreBonus: parseFloat(localStorage.getItem('scoreBonus')) || 1.0
+        };
+
+        // Power-ups
+        let powerups = {
+            rainbow: 3,
+            bomb: 2,
+            freeze: 2,
+            magnet: 2
+        };
+
+        // Colors
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#FFD93D', '#E056FD', '#686DE0'];
+
+        // Special orb types
+        const SPECIAL_TYPES = {
+            NORMAL: 'normal',
+            DIAMOND: 'diamond',
+            LIGHTNING: 'lightning',
+            STAR: 'star',
+            TARGET: 'target'
+        };
+
+        // Realistic bubble-popping sound system with noise burst
+        function playSound(type = 'pop', data = {}) {
+            if (!audioCtx) return;
+            
+            try {
+                if (type === 'pop') {
+                    // Realistic bubble pop with noise burst
+                    const baseFreq = 600 + Math.random() * 800;
+                    
+                    // Tone component
+                    const osc = audioCtx.createOscillator();
+                    const oscGain = audioCtx.createGain();
+                    
+                    osc.connect(oscGain);
+                    oscGain.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.2, audioCtx.currentTime + 0.05);
+                    osc.type = 'sine';
+                    
+                    oscGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    oscGain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.002);
+                    oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.05);
+                    
+                    // Noise burst for realistic pop
+                    const bufferSize = audioCtx.sampleRate * 0.03;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+                    }
+                    
+                    const noise = audioCtx.createBufferSource();
+                    const noiseGain = audioCtx.createGain();
+                    const noiseFilter = audioCtx.createBiquadFilter();
+                    
+                    noise.buffer = buffer;
+                    noise.connect(noiseFilter);
+                    noiseFilter.connect(noiseGain);
+                    noiseGain.connect(audioCtx.destination);
+                    
+                    noiseFilter.type = 'highpass';
+                    noiseFilter.frequency.value = 2000;
+                    
+                    noiseGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+                    
+                    noise.start(audioCtx.currentTime);
+                    noise.stop(audioCtx.currentTime + 0.03);
+                }
+                else if (type === 'combo') {
+                    // Cheerful bubble combo with pop burst
+                    const comboLevel = Math.min(data.combo || 1, 15);
+                    for (let i = 0; i < 2; i++) {
+                        setTimeout(() => {
+                            const freq = 700 + (comboLevel * 40) + (i * 350);
+                            
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.3, audioCtx.currentTime + 0.08);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.003);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.08);
+                        }, i * 60);
+                    }
+                }
+                else if (type === 'diamond') {
+                    // Multiple rapid bubble bursts
+                    for (let i = 0; i < 6; i++) {
+                        setTimeout(() => {
+                            const freq = 1000 + Math.random() * 1200;
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.25, audioCtx.currentTime + 0.06);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.002);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.06);
+                        }, i * 30);
+                    }
+                }
+                else if (type === 'lightning') {
+                    // Electric bubble chain burst
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc1.frequency.setValueAtTime(1000, audioCtx.currentTime);
+                    osc1.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.12);
+                    osc1.type = 'sine';
+                    
+                    osc2.frequency.setValueAtTime(1500, audioCtx.currentTime);
+                    osc2.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.12);
+                    osc2.type = 'sine';
+                    
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.005);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                    
+                    osc1.start(audioCtx.currentTime);
+                    osc1.stop(audioCtx.currentTime + 0.12);
+                    osc2.start(audioCtx.currentTime);
+                    osc2.stop(audioCtx.currentTime + 0.12);
+                }
+                else if (type === 'star') {
+                    // Magical sparkly bubble pops
+                    const happyNotes = [659.25, 783.99, 987.77, 1318.51];
+                    happyNotes.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.4, audioCtx.currentTime + 0.15);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.16, audioCtx.currentTime + 0.003);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.15);
+                        }, i * 45);
+                    });
+                }
+                else if (type === 'target') {
+                    // Satisfying bubble hit
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(1000, audioCtx.currentTime + 0.015);
+                    osc.frequency.exponentialRampToValueAtTime(250, audioCtx.currentTime + 0.1);
+                    osc.type = 'sine';
+                    
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.22, audioCtx.currentTime + 0.003);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.1);
+                }
+                else if (type === 'powerup') {
+                    // Power-up bubble sequence
+                    const cheerfulNotes = [523.25, 659.25, 783.99, 1046.50];
+                    cheerfulNotes.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.12);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.003);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.12);
+                        }, i * 50);
+                    });
+                }
+                else if (type === 'levelup') {
+                    // Victory fanfare
+                    const victoryMelody = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1568];
+                    victoryMelody.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.6, audioCtx.currentTime + 0.25);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.25);
+                        }, i * 90);
+                    });
+                }
+                else if (type === 'freeze') {
+                    // Freeze bubble
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.2);
+                    osc.type = 'sine';
+                    
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+                else if (type === 'achievement') {
+                    // Achievement fanfare
+                    const fanfare = [392, 523.25, 659.25, 783.99, 1046.50];
+                    fanfare.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.3);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.01);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.3);
+                        }, i * 75);
+                    });
+                }
+                else if (type === 'gameover') {
+                    // Sad bubbles
+                    const sadNotes = [523.25, 493.88, 440, 392, 349.23];
+                    sadNotes.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(freq * 0.7, audioCtx.currentTime + 0.3);
+                            osc.type = 'sine';
+                            
+                            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.14, audioCtx.currentTime + 0.01);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                            
+                            osc.start(audioCtx.currentTime);
+                            osc.stop(audioCtx.currentTime + 0.3);
+                        }, i * 140);
+                    });
+                }
+                else if (type === 'collect') {
+                    // Gem pickup bubble
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(1400, audioCtx.currentTime + 0.04);
+                    osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.12);
+                    osc.type = 'sine';
+                    
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.003);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.12);
+                }
+            } catch (error) {
+                console.log('Audio playback error:', error);
+            }
+        }
+
+        // Enhanced Orb class
+        class Orb {
+            constructor(x, y, color, specialType = SPECIAL_TYPES.NORMAL) {
+                this.x = x;
+                this.y = y;
+                this.radius = specialType === SPECIAL_TYPES.NORMAL ? 25 : 30;
+                this.color = color;
+                this.specialType = specialType;
+                this.vx = (Math.random() - 0.5) * 4; // Increased from 3
+                this.vy = (Math.random() - 0.5) * 4; // Increased from 3
+                this.exploding = false;
+                this.explosionRadius = 0;
+                this.alpha = 1;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.15; // Faster rotation
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+
+            update() {
+                if (!this.exploding) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.rotation += this.rotationSpeed;
+                    this.pulsePhase += 0.05;
+
+                    // Bounce off walls
+                    if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                        this.vx *= -1;
+                        this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                    }
+                    if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+                        this.vy *= -1;
+                        this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+                    }
+
+                    // Friction - less friction for more challenge
+                    this.vx *= 0.985; // Changed from 0.98
+                    this.vy *= 0.985;
+                } else {
+                    this.explosionRadius += 8;
+                    this.alpha -= 0.04;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                if (!this.exploding) {
+                    const pulse = Math.sin(this.pulsePhase) * 3;
+                    const currentRadius = Math.max(5, this.radius + pulse); // Ensure radius is always positive
+
+                    // Glow effect
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = this.color;
+                    
+                    // Draw based on special type
+                    if (this.specialType === SPECIAL_TYPES.DIAMOND) {
+                        this.drawDiamond(currentRadius);
+                    } else if (this.specialType === SPECIAL_TYPES.LIGHTNING) {
+                        this.drawLightning(currentRadius);
+                    } else if (this.specialType === SPECIAL_TYPES.STAR) {
+                        this.drawStar(currentRadius);
+                    } else if (this.specialType === SPECIAL_TYPES.TARGET) {
+                        this.drawTarget(currentRadius);
+                    } else {
+                        // Normal orb
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Highlight
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                        ctx.beginPath();
+                        ctx.arc(-8, -8, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    // Explosion effect
+                    ctx.shadowBlur = 30;
+                    ctx.shadowColor = this.color;
+                    ctx.strokeStyle = this.color;
+                    ctx.globalAlpha = this.alpha;
+                    ctx.lineWidth = 6;
+                    
+                    for (let i = 0; i < 3; i++) {
+                        const explosionRad = Math.max(1, this.explosionRadius - i * 15); // Ensure positive radius
+                        ctx.beginPath();
+                        ctx.arc(0, 0, explosionRad, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            drawDiamond(radius) {
+                ctx.fillStyle = '#00D4FF';
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(0, -radius);
+                ctx.lineTo(radius, 0);
+                ctx.lineTo(0, radius);
+                ctx.lineTo(-radius, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Diamond sparkle
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillText('💎', -10, 8);
+            }
+
+            drawLightning(radius) {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(0, 0, Math.max(5, radius), 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('⚡', -8, 8);
+            }
+
+            drawStar(radius) {
+                ctx.fillStyle = '#FF1493';
+                this.drawStarShape(radius, 5);
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText('🌟', -10, 8);
+            }
+
+            drawTarget(radius) {
+                ctx.fillStyle = '#FF4500';
+                ctx.beginPath();
+                ctx.arc(0, 0, Math.max(5, radius), 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 3;
+                for (let i = 1; i <= 3; i++) {
+                    const targetRad = Math.max(2, radius * i / 3); // Ensure positive radius
+                    ctx.beginPath();
+                    ctx.arc(0, 0, targetRad, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('🎯', -8, 6);
+            }
+
+            drawStarShape(radius, spikes) {
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const angle = (Math.PI / spikes) * i;
+                    const r = i % 2 === 0 ? radius : radius / 2;
+                    const x = Math.cos(angle) * r;
+                    const y = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            explode() {
+                if (!this.exploding) {
+                    this.exploding = true;
+                    
+                    // Special effects based on type
+                    if (this.specialType === SPECIAL_TYPES.DIAMOND) {
+                        createParticles(this.x, this.y, this.color, 30);
+                        playSound('diamond');
+                        return 'diamond';
+                    } else if (this.specialType === SPECIAL_TYPES.LIGHTNING) {
+                        createParticles(this.x, this.y, this.color, 20);
+                        playSound('lightning');
+                        return 'lightning';
+                    } else if (this.specialType === SPECIAL_TYPES.STAR) {
+                        createParticles(this.x, this.y, this.color, 25);
+                        playSound('star');
+                        return 'star';
+                    } else if (this.specialType === SPECIAL_TYPES.TARGET) {
+                        createParticles(this.x, this.y, this.color, 15);
+                        playSound('target');
+                        return 'target';
+                    } else {
+                        createParticles(this.x, this.y, this.color, 12);
+                        playSound('pop');
+                        return 'normal';
+                    }
+                }
+                return null;
+            }
+
+            isNear(otherOrb) {
+                const dx = this.x - otherOrb.x;
+                const dy = this.y - otherOrb.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < this.explosionRadius;
+            }
+        }
+
+        // Enhanced Particle class
+        class Particle {
+            constructor(x, y, color, size = null) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12 - 2;
+                this.alpha = 1;
+                this.color = color;
+                this.size = size || (Math.random() * 5 + 2);
+                this.gravity = 0.3;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.alpha -= 0.015;
+                this.rotation += this.rotationSpeed;
+                this.vx *= 0.98;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        function createParticles(x, y, color, count = 12) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        // Initialize orbs
+        function spawnOrbs(count, includeSpecial = true) {
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * (canvas.width - 100) + 50;
+                const y = Math.random() * (canvas.height - 100) + 50;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                let specialType = SPECIAL_TYPES.NORMAL;
+                
+                if (includeSpecial && Math.random() < 0.15) {
+                    const types = [SPECIAL_TYPES.DIAMOND, SPECIAL_TYPES.LIGHTNING, SPECIAL_TYPES.STAR, SPECIAL_TYPES.TARGET];
+                    specialType = types[Math.floor(Math.random() * types.length)];
+                }
+                
+                orbs.push(new Orb(x, y, color, specialType));
+            }
+        }
+
+        // Handle tap
+        function handleTap(x, y) {
+            if (!gameRunning) return;
+
+            let clickedOrb = null;
+            
+            for (let orb of orbs) {
+                const dx = x - orb.x;
+                const dy = y - orb.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < orb.radius && !orb.exploding) {
+                    clickedOrb = orb;
+                    break;
+                }
+            }
+
+            if (clickedOrb) {
+                const currentTime = Date.now();
+                if (currentTime - lastExplosionTime < 1000) {
+                    streak++;
+                    if (streak >= 5) {
+                        document.getElementById('streakDisplay').style.display = 'block';
+                        document.getElementById('streakCount').textContent = streak;
+                    }
+                } else {
+                    streak = 0;
+                    document.getElementById('streakDisplay').style.display = 'none';
+                }
+                lastExplosionTime = currentTime;
+                
+                if (activePowerup === 'rainbow') {
+                    const targetColor = clickedOrb.color;
+                    orbs.forEach(orb => {
+                        if (orb.color === targetColor) {
+                            handleSpecialEffect(orb.explode());
+                        }
+                    });
+                    activePowerup = null;
+                    updatePowerupUI();
+                } else if (activePowerup === 'bomb') {
+                    orbs.forEach(orb => {
+                        const dx = orb.x - clickedOrb.x;
+                        const dy = orb.y - clickedOrb.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < 150) {
+                            handleSpecialEffect(orb.explode());
+                        }
+                    });
+                    activePowerup = null;
+                    updatePowerupUI();
+                } else if (activePowerup === 'magnet') {
+                    orbs.forEach(orb => {
+                        const dx = clickedOrb.x - orb.x;
+                        const dy = clickedOrb.y - orb.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance > 0 && distance < 300) {
+                            orb.vx += dx / distance * 5;
+                            orb.vy += dy / distance * 5;
+                        }
+                    });
+                    activePowerup = null;
+                    updatePowerupUI();
+                } else {
+                    handleSpecialEffect(clickedOrb.explode());
+                }
+            }
+        }
+
+        function handleSpecialEffect(effectType) {
+            if (!effectType) return;
+            
+            if (effectType === 'diamond') {
+                // Diamond explodes all nearby orbs regardless of color
+                score += 100 * scoreMultiplier;
+                showNotification('💎 Diamond Blast! +100');
+            } else if (effectType === 'lightning') {
+                // Lightning gives 3x combo multiplier
+                combo *= 3;
+                score += 50 * scoreMultiplier;
+                showNotification('⚡ Lightning Chain! 3x Combo');
+            } else if (effectType === 'star') {
+                // Star adds time
+                timeLeft += 5;
+                score += 30 * scoreMultiplier;
+                showNotification('🌟 Time Bonus! +5s');
+            } else if (effectType === 'target') {
+                // Target gives triple points
+                score += 150 * scoreMultiplier;
+                showNotification('🎯 Triple Score! +150');
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            handleTap(x, y);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            handleTap(x, y);
+        });
+
+        // Power-up buttons
+        document.getElementById('rainbowBtn').addEventListener('click', () => {
+            if (powerups.rainbow > 0 && gameRunning && !activePowerup) {
+                powerups.rainbow--;
+                activePowerup = 'rainbow';
+                document.getElementById('rainbowBtn').classList.add('active');
+                updatePowerupUI();
+                showNotification('🌈 Rainbow Active! Tap any color');
+                playSound('powerup');
+            }
+        });
+
+        document.getElementById('bombBtn').addEventListener('click', () => {
+            if (powerups.bomb > 0 && gameRunning && !activePowerup) {
+                powerups.bomb--;
+                activePowerup = 'bomb';
+                document.getElementById('bombBtn').classList.add('active');
+                updatePowerupUI();
+                showNotification('💣 Bomb Active! Tap anywhere');
+                playSound('powerup');
+            }
+        });
+
+        document.getElementById('freezeBtn').addEventListener('click', () => {
+            if (powerups.freeze > 0 && gameRunning) {
+                powerups.freeze--;
+                timeLeft += 10 + upgrades.extraTime;
+                updatePowerupUI();
+                showNotification(`❄️ +${10 + upgrades.extraTime} seconds!`);
+                playSound('freeze');
+            }
+        });
+
+        document.getElementById('magnetBtn').addEventListener('click', () => {
+            if (powerups.magnet > 0 && gameRunning && !activePowerup) {
+                powerups.magnet--;
+                activePowerup = 'magnet';
+                document.getElementById('magnetBtn').classList.add('active');
+                updatePowerupUI();
+                showNotification('🧲 Magnet Active! Tap to pull orbs');
+                playSound('powerup');
+            }
+        });
+
+        function updatePowerupUI() {
+            document.getElementById('rainbowCount').textContent = powerups.rainbow;
+            document.getElementById('bombCount').textContent = powerups.bomb;
+            document.getElementById('freezeCount').textContent = powerups.freeze;
+            document.getElementById('magnetCount').textContent = powerups.magnet;
+            
+            document.getElementById('rainbowBtn').disabled = powerups.rainbow === 0;
+            document.getElementById('bombBtn').disabled = powerups.bomb === 0;
+            document.getElementById('freezeBtn').disabled = powerups.freeze === 0;
+            document.getElementById('magnetBtn').disabled = powerups.magnet === 0;
+
+            if (!activePowerup) {
+                document.querySelectorAll('.powerup-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000);
+        }
+
+        function showAchievement(icon, title) {
+            const achievement = document.createElement('div');
+            achievement.className = 'achievement-popup';
+            achievement.innerHTML = `
+                <div class="achievement-icon">${icon}</div>
+                <div style="font-size: 18px;">${title}</div>
+            `;
+            document.getElementById('gameContainer').appendChild(achievement);
+            setTimeout(() => achievement.remove(), 3000);
+            playSound('achievement');
+        }
+
+        // Update game
+        function update() {
+            if (!gameRunning) return;
+
+            // Update orbs
+            orbs.forEach(orb => orb.update());
+
+            // Check for chain reactions
+            let chainHappened = false;
+            orbs.forEach((orb, index) => {
+                if (orb.exploding) {
+                    orbs.forEach((otherOrb, otherIndex) => {
+                        if (index !== otherIndex && !otherOrb.exploding && orb.isNear(otherOrb)) {
+                            if (orb.color === otherOrb.color) {
+                                const effect = otherOrb.explode();
+                                if (effect) {
+                                    chainHappened = true;
+                                    combo++;
+                                    const comboBonus = combo * 10 * scoreMultiplier * (1 + streak * 0.1);
+                                    score += Math.floor(comboBonus);
+                                    handleSpecialEffect(effect);
+                                    
+                                    // Play combo sound
+                                    if (combo % 5 === 0) {
+                                        playSound('combo', { combo: Math.min(combo, 20) });
+                                    }
+                                    
+                                    // Harder gem collection - need combo of 7 (was 5)
+                                    if (combo % 7 === 0) {
+                                        gems++;
+                                        totalGems++;
+                                        showNotification('💎 Gem collected!');
+                                        playSound('collect');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Remove dead orbs
+            orbs = orbs.filter(orb => !orb.exploding || orb.alpha > 0);
+
+            // Update particles
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.alpha > 0);
+
+            // Spawn new orbs - MORE CHALLENGING
+            const maxOrbs = 15 + Math.floor(currentLevel * 1.5); // More orbs per level
+            if (orbs.length < maxOrbs && Math.random() < orbSpawnRate * (1 + currentLevel * 0.15)) {
+                spawnOrbs(1, true);
+            }
+
+            // Update combo display
+            if (combo > 1) {
+                maxCombo = Math.max(maxCombo, combo);
+                const comboDisplay = document.getElementById('comboDisplay');
+                let comboText = `${combo}x COMBO!`;
+                if (combo >= 10) comboText = `🔥 ${combo}x MEGA COMBO! 🔥`;
+                if (combo >= 20) comboText = `⚡ ${combo}x ULTRA COMBO! ⚡`;
+                comboDisplay.textContent = comboText;
+                comboDisplay.style.opacity = '1';
+                setTimeout(() => {
+                    comboDisplay.style.opacity = '0';
+                }, 600);
+            }
+
+            if (!chainHappened) {
+                combo = 0;
+            }
+
+            // Update progress
+            const progress = (score / targetScore) * 100;
+            document.getElementById('progressBar').style.width = Math.min(progress, 100) + '%';
+
+            // Level up check
+            if (score >= targetScore) {
+                levelUp();
+            }
+
+            // Update UI
+            document.getElementById('score').textContent = Math.floor(score);
+            document.getElementById('combo').textContent = combo + 'x';
+            document.getElementById('level').textContent = currentLevel;
+            document.getElementById('gems').textContent = gems + '💎';
+            document.getElementById('multiplier').textContent = scoreMultiplier.toFixed(1);
+        }
+
+        // Draw game
+        function draw() {
+            // Clear with fade effect
+            ctx.fillStyle = 'rgba(15, 12, 41, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background effects
+            drawBackgroundEffects();
+
+            // Draw particles
+            particles.forEach(p => p.draw());
+
+            // Draw orbs
+            orbs.forEach(orb => orb.draw());
+
+            // Draw active powerup effect
+            if (activePowerup) {
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function drawBackgroundEffects() {
+            // Subtle grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Timer
+        let timerInterval;
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (gameRunning) {
+                    timeLeft--;
+                    document.getElementById('timer').textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        endGame();
+                    } else if (timeLeft <= 15) { // Changed from 10 for earlier warning
+                        document.getElementById('timer').style.color = '#FF6B6B';
+                    }
+                }
+            }, 1000);
+        }
+
+        // Level up
+        function levelUp() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            
+            currentLevel++;
+            maxLevel = Math.max(maxLevel, currentLevel);
+            localStorage.setItem('maxLevel', maxLevel);
+            
+            const gemsEarned = 10 + currentLevel * 5;
+            gems += gemsEarned;
+            totalGems += gemsEarned;
+            localStorage.setItem('totalGems', totalGems);
+            
+            document.getElementById('levelScore').textContent = Math.floor(score);
+            document.getElementById('levelCombo').textContent = maxCombo + 'x';
+            document.getElementById('gemsEarned').textContent = gemsEarned + '💎';
+            document.getElementById('nextLevel').textContent = currentLevel;
+            
+            updateUpgradeButtons();
+            
+            document.getElementById('levelUpScreen').style.display = 'flex';
+            
+            playSound('levelup');
+            
+            if (currentLevel === 5) showAchievement('🏆', 'Level 5 Master!');
+            if (currentLevel === 10) showAchievement('👑', 'Level 10 Legend!');
+        }
+
+        function updateUpgradeButtons() {
+            document.getElementById('upgradeTime').disabled = totalGems < 50;
+            document.getElementById('upgradePowerup').disabled = totalGems < 30;
+            document.getElementById('upgradeMultiplier').disabled = totalGems < 100;
+        }
+
+        // Upgrades
+        document.getElementById('upgradeTime').addEventListener('click', () => {
+            if (totalGems >= 50) {
+                totalGems -= 50;
+                upgrades.extraTime += 5;
+                localStorage.setItem('extraTime', upgrades.extraTime);
+                localStorage.setItem('totalGems', totalGems);
+                updateUpgradeButtons();
+                showNotification('⏰ Time upgrade purchased!');
+            }
+        });
+
+        document.getElementById('upgradePowerup').addEventListener('click', () => {
+            if (totalGems >= 30) {
+                totalGems -= 30;
+                upgrades.powerupBonus++;
+                powerups.rainbow++;
+                powerups.bomb++;
+                powerups.freeze++;
+                powerups.magnet++;
+                localStorage.setItem('powerupBonus', upgrades.powerupBonus);
+                localStorage.setItem('totalGems', totalGems);
+                updateUpgradeButtons();
+                updatePowerupUI();
+                showNotification('⚡ Power-up upgrade purchased!');
+            }
+        });
+
+        document.getElementById('upgradeMultiplier').addEventListener('click', () => {
+            if (totalGems >= 100) {
+                totalGems -= 100;
+                scoreMultiplier += 0.5;
+                localStorage.setItem('scoreMultiplier', scoreMultiplier);
+                localStorage.setItem('totalGems', totalGems);
+                updateUpgradeButtons();
+                showNotification('💯 Score multiplier upgraded!');
+            }
+        });
+
+        document.getElementById('continueBtn').addEventListener('click', () => {
+            document.getElementById('levelUpScreen').style.display = 'none';
+            
+            // Reset for next level - MORE CHALLENGING
+            targetScore = 1500 * Math.pow(1.8, currentLevel - 1); // Steeper progression (was 1.5)
+            timeLeft = 40 + upgrades.extraTime - Math.min(currentLevel * 2, 15); // Less time per level
+            orbSpawnRate += 0.005; // Faster spawning each level
+            orbs = [];
+            particles = [];
+            maxCombo = 0;
+            powerups.rainbow += 1 + upgrades.powerupBonus;
+            powerups.bomb += 1 + upgrades.powerupBonus;
+            powerups.freeze += 1 + upgrades.powerupBonus;
+            powerups.magnet += 1 + upgrades.powerupBonus;
+            
+            spawnOrbs(14 + currentLevel * 2, true); // More initial orbs
+            updatePowerupUI();
+            
+            gameRunning = true;
+            startTimer();
+        });
+
+        // Start game
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            timeLeft = 45 + upgrades.extraTime; // Reduced from 60
+            currentLevel = 1;
+            gems = 0;
+            targetScore = 1500; // Increased from 1000
+            orbSpawnRate = 0.025; // Reset spawn rate
+            orbs = [];
+            particles = [];
+            activePowerup = null;
+            streak = 0;
+            powerups = { 
+                rainbow: 2 + upgrades.powerupBonus, // Reduced from 3
+                bomb: 2 + upgrades.powerupBonus, 
+                freeze: 1 + upgrades.powerupBonus, // Reduced from 2
+                magnet: 2 + upgrades.powerupBonus
+            };
+
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('timer').style.color = 'white';
+            document.getElementById('streakDisplay').style.display = 'none';
+            document.getElementById('progressBar').style.width = '0%';
+
+            spawnOrbs(16, true); // More initial orbs (was 12)
+            updatePowerupUI();
+            startTimer();
+        }
+
+        // End game
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+
+            document.getElementById('finalScore').textContent = Math.floor(score);
+            document.getElementById('levelReached').textContent = currentLevel;
+            document.getElementById('finalCombo').textContent = maxCombo + 'x';
+            document.getElementById('totalGems').textContent = totalGems + '💎';
+
+            if (score > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem('chainReactionProHighScore', highScore);
+                document.getElementById('newHighscore').style.display = 'block';
+                showAchievement('🏆', 'NEW HIGH SCORE!');
+            } else {
+                document.getElementById('newHighscore').style.display = 'none';
+                playSound('gameover');
+            }
+
+            document.getElementById('gameOverScreen').style.display = 'flex';
+            
+            // Achievement checks
+            if (maxCombo >= 20) showAchievement('⚡', 'Combo Master!');
+            if (Math.floor(score) >= 5000) showAchievement('💎', 'Score Legend!');
+        }
+
+        // Update displays
+        document.getElementById('highscoreDisplay').textContent = `Best Score: ${highScore} | Level: ${maxLevel}`;
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        document.getElementById('mainMenuBtn').addEventListener('click', () => {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+        });
+
+        // Start game loop
+        gameLoop();
+
+        // Resume audio context on first interaction
+        document.addEventListener('touchstart', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>
